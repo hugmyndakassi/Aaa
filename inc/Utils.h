@@ -151,6 +151,15 @@
 #define SS_REALSIZECONTROL      0x00000040L
 #endif
 
+#ifndef BS_SPLITBUTTON
+#define BS_SPLITBUTTON          0x0000000CL
+#endif
+
+#ifndef BCN_DROPDOWN
+#define BCN_FIRST               (0U-1250U)
+#define BCN_DROPDOWN            (BCN_FIRST + 0x0002)
+#endif
+
 #ifndef HDF_SORTUP
 #define HDF_SORTUP              0x0400
 #define HDF_SORTDOWN            0x0200
@@ -923,7 +932,7 @@ void   WINAPI FreeAppendedString(LPTSTR szString);
 
 // Browses for a file. The initial dir and/or the file may be
 // entered by a string or by a control ID.
-//BOOL BrowseForFile(HWND hParent, LPTSTR szDir, LPTSTR szFile, UINT nIDTitle, UINT nIDFilters);
+//BOOL BrowseForFile(HWND hWndParent, LPTSTR szDir, LPTSTR szFile, UINT nIDTitle, UINT nIDFilters);
 void WINAPI InitOpenFileName(LPOPENFILENAME pOFN);
 BOOL WINAPI GetOpenFileNameRc(HWND hWndParent, LPOPENFILENAME pOFN);
 BOOL WINAPI GetSaveFileNameRc(HWND hWndParent, LPOPENFILENAME pOFN);
@@ -964,7 +973,7 @@ int _cdecl EnableDlgItems(HWND hDlg, BOOL bEnable, ...);
 DWORD WINAPI EnablePrivilege(LPCTSTR szPrivilegeName);
 
 // Gets the rectangle of a dialog's template
-BOOL WINAPI GetDialogRect(HWND hParent, UINT nIDDlgTemplate, RECT & rect);
+BOOL WINAPI GetDialogRect(HWND hWndParent, UINT nIDDlgTemplate, RECT & rect);
 
 // Get the title of the page from the dialog template
 DWORD WINAPI GetDialogTitleFromTemplate(HINSTANCE hInst, LPCTSTR szDlgTemplate, LPTSTR szTitle, size_t cchTitle);
@@ -1047,8 +1056,8 @@ int WINAPI MessageBoxWithCheckBox(
     UINT uType);
 
 // Shows a message box using resource strings
-int   WINAPI MessageBoxRcV(HWND hParent, UINT_PTR nIDCaption, UINT_PTR nIDFormat, va_list argList);
-int   _cdecl MessageBoxRc(HWND hParent, UINT_PTR nIDCaption, UINT_PTR nIDFormat, ...);
+int   WINAPI MessageBoxRcV(HWND hWndParent, UINT_PTR nIDCaption, UINT_PTR nIDFormat, va_list argList);
+int   _cdecl MessageBoxRc(HWND hWndParent, UINT_PTR nIDCaption, UINT_PTR nIDFormat, ...);
 
 // Shows a question message box with "Yes - Yes All - No - Cancel" buttons
 int   WINAPI MessageBoxYANCV(HWND hWndParent, UINT_PTR nIDTitle, UINT_PTR nIDFormat, va_list argList);
@@ -1057,8 +1066,8 @@ int   _cdecl MessageBoxYANC(HWND hWndParent, UINT_PTR nIDTitle, UINT_PTR nIDForm
 // Shows a message box with appended error code text
 // "Failed to open the file %s\nAccess denied"
 // Returns the error code passed to dwErrCode
-DWORD WINAPI MessageBoxErrorV(HWND hParent, UINT_PTR nIDFormat, DWORD dwErrCode, va_list argList);
-DWORD _cdecl MessageBoxError(HWND hParent, UINT_PTR nIDFormat, DWORD dwErrCode = ERROR_SUCCESS, ...);
+DWORD WINAPI MessageBoxErrorV(HWND hWndParent, UINT_PTR nIDFormat, DWORD dwErrCode, va_list argList);
+DWORD _cdecl MessageBoxError(HWND hWndParent, UINT_PTR nIDFormat, DWORD dwErrCode = ERROR_SUCCESS, ...);
 
 // Sets an icon to the dialog
 void WINAPI SetDialogIcon(HWND hDlg, UINT nIDIcon);
@@ -1176,7 +1185,7 @@ LPTSTR WINAPI NewStr(HWND hWnd, size_t cchCharsToReserve = 0);
 int WINAPI SetWindowTextRcVA(HWND hWnd, UINT nIDText, va_list argList);
 int _cdecl SetWindowTextRc(HWND hWnd, UINT nIDText, ...);
 
-// Shows a systray baloon or a timed messagebox
+// Shows a systray balloon or a timed messagebox
 BOOL _cdecl ShowSystrayBaloon(HWND hDlg, UINT nIDIcon, UINT nIDTitle, UINT nIDText, ...);
 
 // Verifies if the user's password is valid.

@@ -268,17 +268,18 @@ typedef struct _KSYSTEM_TIME
 
 } KSYSTEM_TIME, *PKSYSTEM_TIME;
 
-#if _MSC_VER <= 1500
-
-#define MAXIMUM_XSTATE_FEATURES             (64)
-
+#ifndef ALL_PROCESSOR_GROUPS
+#define ALL_PROCESSOR_GROUPS
 typedef struct _PROCESSOR_NUMBER
 {
     USHORT Group;
     UCHAR Number;
     UCHAR Reserved;
-} PROCESSOR_NUMBER;
+} PROCESSOR_NUMBER, *PPROCESSOR_NUMBER;
+#endif
 
+#ifndef MAXIMUM_XSTATE_FEATURES
+#define MAXIMUM_XSTATE_FEATURES             (64)
 typedef struct _XSTATE_FEATURE
 {
     DWORD Offset;
@@ -331,7 +332,7 @@ typedef struct _XSTATE_CONFIGURATION
     // current environment, in bytes.
     WORD   MaxSveVectorLength;
     WORD   Spare1;
-} XSTATE_CONFIGURATION, * PXSTATE_CONFIGURATION;
+} XSTATE_CONFIGURATION, *PXSTATE_CONFIGURATION;
 #endif
 
 #pragma pack(push, 4)
@@ -1134,7 +1135,7 @@ typedef struct _TEB
 //
 
 // Flags for IMAGE_LOAD_CONFIG_DIRECTORY32_WIN10::GuardFlags
-#ifndef IMAGE_GUARD_CF_INSTRUMENTED
+#ifndef NTDDI_WIN7
 #define IMAGE_GUARD_CF_INSTRUMENTED                    0x00000100 // Module performs control flow integrity checks using system-supplied support
 #define IMAGE_GUARD_CFW_INSTRUMENTED                   0x00000200 // Module performs control flow and write integrity checks
 #define IMAGE_GUARD_CF_FUNCTION_TABLE_PRESENT          0x00000400 // Module contains valid control flow target metadata
@@ -1157,7 +1158,7 @@ typedef struct _IMAGE_LOAD_CONFIG_CODE_INTEGRITY
     WORD    Catalog;                    // 0xFFFF means not available
     DWORD   CatalogOffset;
     DWORD   Reserved;                   // Additional bitmask to be defined later
-} IMAGE_LOAD_CONFIG_CODE_INTEGRITY, * PIMAGE_LOAD_CONFIG_CODE_INTEGRITY;
+} IMAGE_LOAD_CONFIG_CODE_INTEGRITY, *PIMAGE_LOAD_CONFIG_CODE_INTEGRITY;
 #endif
 
 #define CREATE_IMAGE_LOAD_CONFIG_DIRECTORY(cfg_name, sztype)        \
@@ -3991,7 +3992,13 @@ NtShutdownSystem(
 #define FILE_CREATE_TREE_CONNECTION             0x00000080
 #define FILE_COMPLETE_IF_OPLOCKED               0x00000100
 #define FILE_NO_EA_KNOWLEDGE                    0x00000200
+#endif
+
+#ifndef FILE_OPEN_FOR_RECOVERY
 #define FILE_OPEN_FOR_RECOVERY                  0x00000400
+#endif
+
+#ifndef FILE_RANDOM_ACCESS
 #define FILE_RANDOM_ACCESS                      0x00000800
 #define FILE_DELETE_ON_CLOSE                    0x00001000
 #define FILE_OPEN_BY_FILE_ID                    0x00002000
@@ -4003,8 +4010,7 @@ NtShutdownSystem(
 #define FILE_OPEN_REPARSE_POINT                 0x00200000
 #define FILE_OPEN_NO_RECALL                     0x00400000
 #define FILE_OPEN_FOR_FREE_SPACE_QUERY          0x00800000
-#endif // FILE_DIRECTORY_FILE
-
+#endif // FILE_RANDOM_ACCESS
 
 //
 // Define the I/O status information return values for NtCreateFile/NtOpenFile
@@ -4858,24 +4864,20 @@ typedef struct _FILE_STAT_LX_INFORMATION {
 
 #ifndef FILE_CS_FLAG_CASE_SENSITIVE_DIR
 #define FILE_CS_FLAG_CASE_SENSITIVE_DIR     0x00000001
-
 typedef struct _FILE_CASE_SENSITIVE_INFORMATION
 {
     DWORD Flags;
 } FILE_CASE_SENSITIVE_INFORMATION, *PFILE_CASE_SENSITIVE_INFORMATION;
 #endif
 
-#ifndef FSCTL_REARRANGE_FILE
+#if !defined(NTDDI_WIN7) || defined(__MINGW32__) || defined(__MINGW64__)
 typedef enum _STORAGE_RESERVE_ID
 {
-
     StorageReserveIdNone = 0,
     StorageReserveIdHard,
     StorageReserveIdSoft,
     StorageReserveIdUpdateScratch,
-
     StorageReserveIdMax
-
 } STORAGE_RESERVE_ID, * PSTORAGE_RESERVE_ID;
 #endif
 

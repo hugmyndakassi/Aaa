@@ -18,7 +18,7 @@ class TToolTip
     // Constructor uses the handle to the window which will show the tooltips,
     // e.g. dialog box window. For a dialog, a good place to construct the
     // TToolTip object is the OnInitDialog method.
-    TToolTip(HWND hParent);
+    TToolTip(HWND hWndParent);
     ~TToolTip();
 
     // Adding tooltips for child windows and/or rectangles
@@ -32,7 +32,7 @@ class TToolTip
 
     protected:
 
-    HWND m_hParent;
+    HWND m_hWndParent;
     HWND m_hToolTip;
     UINT m_nIdCounter;
 };
