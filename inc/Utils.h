@@ -379,39 +379,98 @@ struct TListViewColumns
 };
 
 //-----------------------------------------------------------------------------
-// Macros / inline functions
+// Stdint types
 
-//
-// Macros for 32-bit rotate operations.
-// VS 2008+ has support for _lrotl/_lrotr, so the call is inlined into rol/ror
-// WDK6001 can still recognize these as rol/ror and uses inline assembly
-//
+#if(_MSC_VER < 1500)
+#ifndef _STDINT
+typedef unsigned short int uint16_t;
+typedef unsigned int       uint32_t;
+typedef unsigned long long uint64_t;
+#endif
+#endif
 
-#if(_MSC_VER >= 1500)
+//-----------------------------------------------------------------------------
+// Byte swapping and rotations
 
-#pragma intrinsic(_lrotl, _lrotr)
-#define RolOperation(dwValue, dwRolCount)  _lrotl(dwValue, dwRolCount)
-#define RorOperation(dwValue, dwRorCount)  _lrotr(dwValue, dwRorCount)
+#ifdef __INTRIN_H_
 
-#else
+// Intrinsic versions for newer compilers
+#pragma intrinsic(_lrotl, _rotl64, _lrotr, _rotr64)
+#pragma intrinsic(_byteswap_ushort, _byteswap_ulong, _byteswap_uint64)
+#define Rol32 _lrotl
+#define Rol64 _rotl64
+#define Ror32 _lrotr
+#define Ror64 _rotr64
+#define Bswap16(val) _byteswap_ushort(val)
+#define Bswap32(val) _byteswap_ulong(val)
+#define Bswap64(val) _byteswap_uint64(val)
 
-ULONG FORCEINLINE RolOperation(ULONG dwValue, ULONG dwRolCount)
+#else       // Legacy implementations
+
+inline uint32_t Rol32(uint32_t dwValue, uint32_t dwRolCount)
 {
-    // Ror by (0x20 + x) is the same like ror by x
+    // 0x20 ROLs is the same like 0 ROLs
     dwRolCount &= 0x1F;
+
+    // Perform the ROL
     return (dwValue << dwRolCount) | (dwValue >> (0x20 - dwRolCount));
 }
 
-ULONG FORCEINLINE RorOperation(ULONG dwValue, ULONG dwRorCount)
+inline uint64_t Rol64(uint64_t dwValue, uint32_t dwRolCount)
 {
-    // Ror by (0x20 + x) is the same like ror by x
-    dwRorCount &= 0x1F;
-    return (dwValue >> dwRorCount) | (dwValue << (0x20 - dwRorCount));
+    // 0x40 ROLs is the same like 0 ROLs
+    dwRolCount &= 0x3F;
+
+    // Perform the ROL
+    return (dwValue << dwRolCount) | (dwValue >> (0x40 - dwRolCount));
 }
 
-#endif  // (_MSC_VER >= 1500)
+inline uint32_t Ror32(uint32_t dwValue, uint32_t dwRolCount)
+{
+    // 0x20 RORs is the same like 0 ROR
+    dwRolCount &= 0x1F;
 
-//
+    // Perform the ROR
+    return (dwValue >> dwRolCount) | (dwValue << (0x20 - dwRolCount));
+}
+
+inline uint64_t Ror64(uint64_t dwValue, uint32_t dwRorCount)
+{
+    // 0x40 ROR is the same like 0 ROR
+    dwRorCount &= 0x3F;
+
+    // Perform the ROR
+    return (dwValue >> dwRorCount) | (dwValue << (0x40 - dwRorCount));
+}
+
+inline uint16_t Bswap16(uint16_t Value16)
+{
+    return ((Value16 >> 0x08) | (Value16 << 0x08));
+}
+
+inline uint32_t Bswap32(uint32_t Value32)
+{
+    return ((Value32 & 0xFF000000) >> 0x18) |
+           ((Value32 & 0x00FF0000) >> 0x08) |
+           ((Value32 & 0x0000FF00) << 0x08) |
+           ((Value32 & 0x000000FF) << 0x18);
+}
+
+inline uint64_t Bswap64(uint64_t Value64)
+{
+    return ((Value64 >> 0x38) & 0x00000000000000FFull) |
+           ((Value64 >> 0x28) & 0x000000000000FF00ull) |
+           ((Value64 >> 0x18) & 0x0000000000FF0000ull) |
+           ((Value64 >> 0x08) & 0x00000000FF000000ull) |
+           ((Value64 << 0x08) & 0x000000FF00000000ull) |
+           ((Value64 << 0x18) & 0x0000FF0000000000ull) |
+           ((Value64 << 0x28) & 0x00FF000000000000ull) |
+           ((Value64 << 0x38) & 0xFF00000000000000ull);
+}
+
+#endif // __INTRIN_H_
+
+//-----------------------------------------------------------------------------
 // Easy access to a width or height of a rectangle
 //
 
@@ -425,7 +484,7 @@ inline int RectCY(const RECT & rect)
     return rect.bottom - rect.top;
 }
 
-//
+//-----------------------------------------------------------------------------
 // Macros for handling LIST_ENTRY-based lists
 //
 
@@ -719,8 +778,9 @@ DWORD Base64ToBinary(const XCHAR * szBase64, LPVOID pvBinary, size_t cbBinary, s
     BYTE Base64ToBits[0x80];
     BYTE OneByte;
 
-    // Prepare the conversion table
+    // Prepare the conversion table, including white spaces
     memset(Base64ToBits, 0xFF, sizeof(Base64ToBits));
+    memset(Base64ToBits, 0xFE, 0x21);
     for(BYTE i = 0; Base64Table[i] != 0; i++)
     {
         OneByte = Base64Table[i];
@@ -735,6 +795,8 @@ DWORD Base64ToBinary(const XCHAR * szBase64, LPVOID pvBinary, size_t cbBinary, s
             return ERROR_BAD_FORMAT;
         if((OneByte = Base64ToBits[*szBase64++]) == 0xFF)
             return ERROR_BAD_FORMAT;
+        if(OneByte == 0xFE)
+            continue;
 
         // Put the 6 bits into the bit buffer
         BitBuffer = (BitBuffer << 6) | OneByte;
@@ -859,6 +921,46 @@ BOOL WINAPI CompareStringWildCard(const XCHAR * szString, const XCHAR * szWildCa
     }
 }
 
+// Replaces the file name with the another one
+template <typename XCHAR>
+HRESULT WINAPI ReplaceFileName(XCHAR * szPath, size_t ccPath, const XCHAR * szPlainName)
+{
+    XCHAR * szPathPtr = GetPlainName(szPath);
+    XCHAR * szPathEnd = szPath + ccPath;
+
+    // If the plain name is not entered, clear the name
+    if(szPlainName == NULL || szPlainName[0] == 0)
+    {
+        szPathPtr[0] = 0;
+        return S_OK;
+    }
+    return StringCchCopy(szPathPtr, (szPathEnd - szPathPtr), szPlainName);
+}
+
+// Replaces the file extension with another one
+template <typename XCHAR>
+DWORD WINAPI ReplaceFileExt(XCHAR * szPath, size_t ccPath, const XCHAR * szNewExt)
+{
+    XCHAR * szPathPtr = GetFileExtension(szPath);
+    XCHAR * szPathEnd = szPath + ccPath;
+
+    if(szNewExt && szNewExt[0])
+    {
+        if(*szNewExt == '.')
+            szNewExt++;
+
+        if(*szNewExt != 0)
+            *szPathPtr++ = '.';
+
+        return StringCchCopy(szPathPtr, (szPathEnd - szPathPtr), szNewExt);
+    }
+    else
+    {
+        szPathPtr[0] = 0;
+        return S_OK;
+    }
+}
+
 //-----------------------------------------------------------------------------
 // Per-monitor DPI support (since Windows 10 17134)
 
@@ -977,6 +1079,7 @@ BOOL WINAPI GetDialogRect(HWND hWndParent, UINT nIDDlgTemplate, RECT & rect);
 
 // Get the title of the page from the dialog template
 DWORD WINAPI GetDialogTitleFromTemplate(HINSTANCE hInst, LPCTSTR szDlgTemplate, LPTSTR szTitle, size_t cchTitle);
+BOOL  WINAPI GetDlgItemTextFromTemplate(HINSTANCE hInst, LPCTSTR szDlgTemplate, UINT nID, LPTSTR szBuffer, size_t ccBuffer);
 
 // Retrieves the error text. The caller must free the text using
 // delete [] szText;
@@ -1155,12 +1258,6 @@ INT_PTR WINAPI TabCtrl_HandleMessages(HWND hTabControl, UINT uMsg, WPARAM wParam
 // Returns -1 if end of file, otherwise number of characters read
 int WINAPI ReadLine(FILE * fp, LPTSTR szBuffer, size_t ccBuffer);
 
-// Replaces the file name with the another one
-DWORD  WINAPI ReplaceFileName(LPTSTR szFullPath, LPCTSTR szPlainName);
-
-// Replaces the file extension with another one.
-DWORD  WINAPI ReplaceFileExt(LPTSTR szFileName, LPCTSTR szNewExt);
-
 // Like sprintf, but the format string is taken from resources
 int _cdecl rsvprintf(LPTSTR szBuffer, size_t nMaxChars, UINT nIDFormat, va_list argList);
 int _cdecl rsprintf(LPTSTR szBuffer, size_t nMaxChars, UINT nIDFormat, ...);
@@ -1210,8 +1307,12 @@ void WINAPI GetWoW64SystemInfo(LPSYSTEM_INFO lpSystemInfo);
 bool WINAPI Is64BitModule(HMODULE hMod);
 bool WINAPI Is64BitWindows();
 
+// Loading whole files to memory
+LPBYTE WINAPI LoadFileToMemory(HANDLE hFile, LPDWORD PtrFileSize, DWORD MaxFileSize = 0);
+LPBYTE WINAPI LoadFileToMemory(LPCTSTR szFileName, LPDWORD PtrFileSize, DWORD MaxFileSize = 0);
+
 // Writes the whole resource to a file
-DWORD WriteResourceToFile(LPCTSTR szFileName, LPCTSTR szResourceType, LPCTSTR szResID);
+DWORD WINAPI WriteResourceToFile(LPCTSTR szFileName, LPCTSTR szResourceType, LPCTSTR szResID);
 
 // Writes the dump file after crash
 LONG WINAPI WriteDumpFile(HWND hWndParent, PEXCEPTION_POINTERS ExceptionPointers);

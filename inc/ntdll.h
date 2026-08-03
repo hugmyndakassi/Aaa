@@ -6363,7 +6363,8 @@ NtSetInformationWorkerFactory(
 //------------------------------------------------------------------------------
 // LPC Functions
 
-#define MAX_LPC_DATA 0x130    // Maximum number of bytes that can be copied through LPC
+// Maximum length that can be transferred via short LPC message
+#define MAX_PORTMSG_LENGTH           0x130
 
 // Valid values for PORT_MESSAGE::u2::s2::Type
 #define LPC_REQUEST                  1
