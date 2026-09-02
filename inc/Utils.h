@@ -1122,7 +1122,7 @@ DWORD WINAPI GetWindowsBuildNumber();
 // Initializes the dialog controls, like combo boxes and list boxes.
 DWORD WINAPI InitDialogControls(HWND hDlg, LPCTSTR lpszResourceName);
 
-// Returns true if the user runs as administrator (or elevated in Vista)
+// Returns TRUE if the process runs with elevated administrator rights (UAC-aware on Vista+)
 BOOL WINAPI IsAdministrator();
 
 // REMOVED:
