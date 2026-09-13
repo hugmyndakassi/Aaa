@@ -641,16 +641,20 @@ size_t StringLength(const XCHAR * szString)
 // Binary <-> String support
 
 template <typename XCHAR>
-DWORD BinaryToString(XCHAR * szBuffer, size_t cchBuffer, LPCVOID pvBinary, size_t cbBinary)
+DWORD StringCchBinary(XCHAR * szBuffer, size_t ccBuffer, const void * lpBinary, size_t cbBinary)
 {
-    LPCBYTE pbBinary = (LPCBYTE)pvBinary;
+    const unsigned char * pbBinary = (const unsigned char *)lpBinary;
+    const size_t ccRequired = cbBinary * 2 + 1;
+
+    // Check overflow
+    if(cbBinary > (SIZE_MAX - 1) / 2)
+        return ERROR_BUFFER_OVERFLOW;
 
     // The size of the string must be enough to hold the binary + EOS
-    if(cchBuffer < ((cbBinary * 2) + 1))
+    if(ccRequired > ccBuffer)
         return ERROR_INSUFFICIENT_BUFFER;
 
-    // Convert the string to the array of MD5
-    // Copy the blob data as text
+    // Convert the string to the array of bytes
     for(size_t i = 0; i < cbBinary; i++)
     {
         *szBuffer++ = IntToHexChar[pbBinary[0] >> 0x04];
@@ -718,7 +722,7 @@ _inline size_t GetLengthOfBase64(size_t cbBinary)
 }
 
 template <typename XCHAR>
-DWORD BinaryToBase64(LPCVOID pvBinary, size_t cbBinary, XCHAR * szBuffer, size_t cchBuffer, const char * Base64Table = Base64Table_Standard)
+DWORD StringCchBase64(XCHAR * szBuffer, size_t ccBuffer, LPCVOID pvBinary, size_t cbBinary, const char * Base64Table = Base64Table_Standard)
 {
     LPCBYTE pbBinary = (LPCBYTE)pvBinary;
     DWORD BitBuffer = 0;
@@ -726,7 +730,7 @@ DWORD BinaryToBase64(LPCVOID pvBinary, size_t cbBinary, XCHAR * szBuffer, size_t
     DWORD CharIndex = 0;
 
     // Verify the length of the buffer
-    if(cchBuffer <= GetLengthOfBase64(cbBinary))
+    if(ccBuffer <= GetLengthOfBase64(cbBinary))
         return ERROR_BUFFER_OVERFLOW;
 
     // Convert the binary buffer
@@ -1024,7 +1028,8 @@ LPWSTR WINAPI NewStrWithBuff(LPWSTR szStaticBuff, size_t cchStaticBuff, LPCWSTR 
 // Handles directory names with or without ending backslashes
 // Returns the pointer to plain file name
 // The caller needs to free the path using delete []
-LPTSTR WINAPI CreateFullPath(LPCTSTR szDirectory, LPCTSTR szSubDir, LPCTSTR szPlainName);
+HRESULT WINAPI StringCchPath(LPTSTR szBuffer, size_t ccBuffer, LPCTSTR szFolder, LPCTSTR szPart1, LPCTSTR szPart2 = NULL, LPCTSTR szPart3 = NULL);
+LPTSTR WINAPI CreateFullPath(LPCTSTR szFolder, LPCTSTR szPart1, LPCTSTR szPart2 = NULL, LPCTSTR szPart3 = NULL);
 
 // Adds a new string to the existing one. The existing must have been
 // allocated by new, the result must be freed using "FreeAppendedString", when no longer needed.
@@ -1062,8 +1067,8 @@ size_t WINAPI GetMultiStringLength(LPCTSTR szMultiString);
 DWORD WINAPI GetMultiStringCount(LPCTSTR szMultiString);
 void WINAPI FreeMultiString(LPTSTR szMultiString);
 
-// Converts a GUID to registry string format (i.e. {XXXXXXXX-XXXX-...})
-int  WINAPI GuidToString(LPGUID pGuid, LPTSTR szBuffer, size_t cchBuffer);
+// Converts a GUID to string
+DWORD WINAPI StringCchGuid(LPTSTR szBuffer, size_t ccBuffer, LPGUID pGuid, bool bNoCurlyBraces = false);
 bool WINAPI StringToGuid(LPCTSTR szString, LPGUID pGuid);
 
 // Enables/disables a group of dialog items by their ID.
@@ -1183,18 +1188,16 @@ DWORD WINAPI GetDomainName(LPTSTR szText, LPDWORD pdwSize);
 
 // Searches all available processes by given name.
 // If the name is found, the function returns the process ID.
-#define INVALID_PROCESS_ID 0xFFFFFFFF
-
 typedef struct _FIND_PROCESS_PARAMS
 {
     LPTSTR szExeName;
-    size_t cchExeName;
+    size_t ccExeName;
     DWORD  dwProcessId;
 } FIND_PROCESS_PARAMS, *PFIND_PROCESS_PARAMS;
 
-typedef bool (ENUM_PROCESS_PROC)(PFIND_PROCESS_PARAMS pFindParams, LPVOID lpParameter);
+typedef bool (ENUM_PROCESS_PROC)(PFIND_PROCESS_PARAMS pFindParams, LPVOID lpParameter, LPCTSTR szExeName, DWORD dwProcessId);
 
-bool WINAPI EnumAllProcesses(ENUM_PROCESS_PROC PfnEnumProc, LPVOID lpParameter = NULL);
+bool WINAPI EnumAllProcesses(ENUM_PROCESS_PROC PfnEnumProc, PFIND_PROCESS_PARAMS pFindParams, LPVOID lpParameter);
 bool WINAPI FindProcessByName(LPCTSTR szExeName, PFIND_PROCESS_PARAMS pFindParams = NULL);
 
 // RadioButton functions
